@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Victorius Cast Receiver</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #0a0a1a;
+            font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+            color: #fff;
+        }
+
+        /* ==================== SCREENSAVER (IDLE STATE) ==================== */
+        #screensaver {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: opacity 0.8s ease;
+        }
+
+        #screensaver.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Animated gradient background */
+        .screensaver-bg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 25%, #0a1a2e 50%, #1a0a1a 75%, #0a0a2e 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 20s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            25% { background-position: 100% 50%; }
+            50% { background-position: 100% 0%; }
+            75% { background-position: 0% 100%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Floating particles */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0;
+            animation: float linear infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-20vh) scale(1); opacity: 0; }
+        }
+
+        .screensaver-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            animation: floatText 6s ease-in-out infinite;
+        }
+
+        @keyframes floatText {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .app-icon {
+            width: 120px;
+            height: 120px;
+            border-radius: 28px;
+            background: linear-gradient(135deg, #6c63ff, #e040fb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            box-shadow: 0 8px 32px rgba(108, 99, 255, 0.4);
+        }
+
+        .app-icon svg {
+            width: 64px;
+            height: 64px;
+            fill: #fff;
+        }
+
+        .app-name {
+            font-size: 42px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            background: linear-gradient(90deg, #6c63ff, #e040fb, #6c63ff);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shimmer 3s linear infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+
+        .app-subtitle {
+            font-size: 18px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 8px;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+        }
+
+        /* ==================== NOW PLAYING STATE ==================== */
+        #nowPlaying {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 5;
+            display: flex;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        #nowPlaying.visible {
+            opacity: 1;
+        }
+
+        /* Blurred background from album art */
+        .bg-blur {
+            position: absolute;
+            top: -20px; left: -20px;
+            width: calc(100% + 40px);
+            height: calc(100% + 40px);
+            background-size: cover;
+            background-position: center;
+            filter: blur(50px) brightness(0.3) saturate(1.5);
+            z-index: 0;
+        }
+
+        .now-playing-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 80px;
+            padding: 60px;
+        }
+
+        .album-art-wrapper {
+            flex-shrink: 0;
+        }
+
+        .album-art {
+            width: 380px;
+            height: 380px;
+            border-radius: 20px;
+            object-fit: cover;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+            50% { box-shadow: 0 20px 80px rgba(108, 99, 255, 0.3); }
+        }
+
+        .track-info {
+            flex: 1;
+            max-width: 600px;
+        }
+
+        .track-title {
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1.15;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .track-artist {
+            font-size: 28px;
+            font-weight: 400;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 8px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .track-album {
+            font-size: 20px;
+            font-weight: 300;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 40px;
+        }
+
+        /* Progress bar */
+        .progress-container {
+            width: 100%;
+            margin-bottom: 16px;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #6c63ff, #e040fb);
+            border-radius: 3px;
+            transition: width 1s linear;
+        }
+
+        .progress-time {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 6px;
+        }
+
+        /* Audio visualizer bars */
+        .visualizer {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            height: 60px;
+            margin-top: 30px;
+        }
+
+        .viz-bar {
+            width: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to top, #6c63ff, #e040fb);
+            transition: height 0.15s ease;
+        }
+
+        /* Music note icon for default art */
+        .default-art {
+            width: 380px;
+            height: 380px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #1a1a3e, #2a1a4e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        }
+
+        .default-art svg {
+            width: 120px;
+            height: 120px;
+            fill: rgba(255,255,255,0.3);
+        }
+
+        /* Hidden cast-media-player (we handle UI ourselves) */
+        cast-media-player {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Google Cast Web Receiver SDK -->
+    <cast-media-player></cast-media-player>
+
+    <!-- SCREENSAVER (shown when idle) -->
+    <div id="screensaver">
+        <div class="screensaver-bg"></div>
+        <div class="screensaver-content">
+            <div class="app-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+            </div>
+            <div class="app-name">VICTORIUS</div>
+            <div class="app-subtitle">Music Player</div>
+        </div>
+    </div>
+
+    <!-- NOW PLAYING (shown when music is playing/paused) -->
+    <div id="nowPlaying">
+        <div class="bg-blur" id="bgBlur"></div>
+        <div class="now-playing-container">
+            <div class="album-art-wrapper">
+                <img id="albumArt" class="album-art" src="" alt="" style="display:none;">
+                <div id="defaultArt" class="default-art">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55C7.79 13 6 14.79 6 17s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                </div>
+            </div>
+            <div class="track-info">
+                <div id="trackTitle" class="track-title">—</div>
+                <div id="trackArtist" class="track-artist">—</div>
+                <div id="trackAlbum" class="track-album"></div>
+                <div class="progress-container">
+                    <div class="progress-bar-bg">
+                        <div id="progressFill" class="progress-bar-fill"></div>
+                    </div>
+                    <div class="progress-time">
+                        <span id="currentTime">0:00</span>
+                        <span id="totalTime">0:00</span>
+                    </div>
+                </div>
+                <div id="visualizer" class="visualizer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+    <script>
+        // ======================== INIT ========================
+        const context = cast.framework.CastReceiverContext.getInstance();
+        const playerManager = context.getPlayerManager();
+
+        // ======================== DOM ========================
+        const screensaver = document.getElementById('screensaver');
+        const nowPlaying = document.getElementById('nowPlaying');
+        const bgBlur = document.getElementById('bgBlur');
+        const albumArt = document.getElementById('albumArt');
+        const defaultArt = document.getElementById('defaultArt');
+        const trackTitle = document.getElementById('trackTitle');
+        const trackArtist = document.getElementById('trackArtist');
+        const trackAlbum = document.getElementById('trackAlbum');
+        const progressFill = document.getElementById('progressFill');
+        const currentTimeEl = document.getElementById('currentTime');
+        const totalTimeEl = document.getElementById('totalTime');
+        const visualizerEl = document.getElementById('visualizer');
+
+        // ======================== PARTICLES ========================
+        function createParticles() {
+            const container = screensaver;
+            const colors = ['#6c63ff', '#e040fb', '#448aff', '#7c4dff', '#b388ff'];
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                const size = Math.random() * 8 + 3;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.animationDuration = (Math.random() * 15 + 10) + 's';
+                particle.style.animationDelay = (Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+        createParticles();
+
+        // ======================== VISUALIZER BARS ========================
+        const NUM_BARS = 24;
+        const bars = [];
+        for (let i = 0; i < NUM_BARS; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'viz-bar';
+            bar.style.height = '4px';
+            visualizerEl.appendChild(bar);
+            bars.push(bar);
+        }
+
+        let vizInterval = null;
+        let isPlaying = false;
+
+        function startVisualizerAnimation() {
+            if (vizInterval) return;
+            isPlaying = true;
+            vizInterval = setInterval(() => {
+                if (!isPlaying) return;
+                bars.forEach((bar, i) => {
+                    // Generate random heights that simulate music visualization
+                    const center = NUM_BARS / 2;
+                    const distFromCenter = Math.abs(i - center) / center;
+                    const maxH = 55 * (1 - distFromCenter * 0.5);
+                    const h = Math.random() * maxH + 4;
+                    bar.style.height = h + 'px';
+                });
+            }, 150);
+        }
+
+        function stopVisualizerAnimation() {
+            isPlaying = false;
+            if (vizInterval) {
+                clearInterval(vizInterval);
+                vizInterval = null;
+            }
+            bars.forEach(bar => { bar.style.height = '4px'; });
+        }
+
+        // ======================== TIME FORMATTING ========================
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '0:00';
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return m + ':' + (s < 10 ? '0' : '') + s;
+        }
+
+        // ======================== PROGRESS UPDATE ========================
+        let progressInterval = null;
+
+        function startProgressUpdates() {
+            if (progressInterval) clearInterval(progressInterval);
+            progressInterval = setInterval(updateProgress, 1000);
+        }
+
+        function stopProgressUpdates() {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+        }
+
+        function updateProgress() {
+            try {
+                const currentTime = playerManager.getCurrentTimeSec();
+                const duration = playerManager.getDurationSec();
+                if (duration > 0) {
+                    const pct = (currentTime / duration) * 100;
+                    progressFill.style.width = Math.min(pct, 100) + '%';
+                    currentTimeEl.textContent = formatTime(currentTime);
+                    totalTimeEl.textContent = formatTime(duration);
+                }
+            } catch (e) { /* ignore timing errors */ }
+        }
+
+        // ======================== STATE MANAGEMENT ========================
+        function showScreensaver() {
+            screensaver.classList.remove('hidden');
+            nowPlaying.classList.remove('visible');
+            stopVisualizerAnimation();
+            stopProgressUpdates();
+        }
+
+        function showNowPlaying() {
+            screensaver.classList.add('hidden');
+            nowPlaying.classList.add('visible');
+        }
+
+        function updateMediaInfo(mediaInfo) {
+            if (!mediaInfo) return;
+
+            const metadata = mediaInfo.metadata;
+            if (metadata) {
+                trackTitle.textContent = metadata.title || metadata.songName || '—';
+                trackArtist.textContent = metadata.artist || metadata.albumArtist || '—';
+                trackAlbum.textContent = metadata.albumName || '';
+
+                // Album art
+                const images = metadata.images;
+                if (images && images.length > 0) {
+                    const artUrl = images[0].url;
+                    albumArt.src = artUrl;
+                    albumArt.style.display = 'block';
+                    defaultArt.style.display = 'none';
+                    bgBlur.style.backgroundImage = 'url(' + artUrl + ')';
+                } else {
+                    albumArt.style.display = 'none';
+                    defaultArt.style.display = 'flex';
+                    bgBlur.style.backgroundImage = 'none';
+                }
+            }
+
+            showNowPlaying();
+        }
+
+        // ======================== CAST EVENT LISTENERS ========================
+        playerManager.addEventListener(
+            cast.framework.events.EventType.PLAYER_STATE_CHANGED,
+            (event) => {
+                const state = event.value;
+                switch (state) {
+                    case cast.framework.messages.PlayerState.PLAYING:
+                        showNowPlaying();
+                        startVisualizerAnimation();
+                        startProgressUpdates();
+                        break;
+                    case cast.framework.messages.PlayerState.PAUSED:
+                        showNowPlaying();
+                        stopVisualizerAnimation();
+                        startProgressUpdates();
+                        break;
+                    case cast.framework.messages.PlayerState.BUFFERING:
+                        showNowPlaying();
+                        stopVisualizerAnimation();
+                        break;
+                    case cast.framework.messages.PlayerState.IDLE:
+                        showScreensaver();
+                        break;
+                }
+            }
+        );
+
+        playerManager.addEventListener(
+            cast.framework.events.EventType.MEDIA_STATUS,
+            (event) => {
+                const mediaInfo = playerManager.getMediaInformation();
+                if (mediaInfo) {
+                    updateMediaInfo(mediaInfo);
+                }
+            }
+        );
+
+        // Intercept LOAD to capture metadata
+        playerManager.setMessageInterceptor(
+            cast.framework.messages.MessageType.LOAD,
+            (request) => {
+                if (request.media) {
+                    updateMediaInfo(request.media);
+                }
+                return request;
+            }
+        );
+
+        // ======================== IDLE TIMEOUT ========================
+        // Google recommends stopping receiver if idle > 5 min to prevent burn-in
+        let idleTimeout = null;
+        function resetIdleTimeout() {
+            if (idleTimeout) clearTimeout(idleTimeout);
+            idleTimeout = setTimeout(() => {
+                // After 5 minutes of idle, close the receiver
+                context.stop();
+            }, 5 * 60 * 1000);
+        }
+
+        playerManager.addEventListener(
+            cast.framework.events.EventType.PLAYER_STATE_CHANGED,
+            (event) => {
+                if (event.value === cast.framework.messages.PlayerState.IDLE) {
+                    resetIdleTimeout();
+                } else {
+                    if (idleTimeout) { clearTimeout(idleTimeout); idleTimeout = null; }
+                }
+            }
+        );
+
+        // ======================== START RECEIVER ========================
+        const options = new cast.framework.CastReceiverOptions();
+        options.disableIdleTimeout = true; // We handle our own timeout
+        context.start(options);
+
+        // Start in screensaver mode
+        showScreensaver();
+    </script>
+</body>
+</html>
